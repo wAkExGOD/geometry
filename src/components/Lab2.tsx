@@ -7,6 +7,7 @@ import type {
     PolygonPointPosition,
     RayIntersection,
 } from "../types/types";
+import { formatPoint } from "../utils/formatPoint";
 
 /** Проверяет первый этап лучевого теста: попадание точки в габаритный прямоугольник. */
 function isInsideBoundingBox(polygon: Point[], point: Point): boolean {
@@ -88,115 +89,6 @@ export function getPointPosition(
         : "outside";
 }
 
-/** Создаёт выпуклый многоугольник с вершинами в порядке обхода. */
-function createPolygon(): Point[] {
-    const radius = 4 + Math.floor(Math.random() * 3);
-    const centerX = Math.floor(Math.random() * 5) - 2;
-    const centerY = Math.floor(Math.random() * 5) - 2;
-
-    return [
-        { x: centerX - radius, y: centerY - 2 },
-        { x: centerX - 2, y: centerY - radius },
-        { x: centerX + radius - 1, y: centerY - radius + 1 },
-        { x: centerX + radius, y: centerY + 2 },
-        { x: centerX + 2, y: centerY + radius },
-        { x: centerX - radius + 1, y: centerY + radius - 1 },
-    ];
-}
-
-function getRandomInteger(minimum: number, maximum: number): number {
-    return Math.floor(Math.random() * (maximum - minimum + 1)) + minimum;
-}
-
-function createExamplePolygon(): Point[] {
-    const left = getRandomInteger(-5, -2);
-    const right = getRandomInteger(3, 6);
-    const bottom = getRandomInteger(-5, -2);
-    const top = getRandomInteger(3, 6);
-
-    return [
-        { x: left, y: bottom },
-        { x: right, y: bottom },
-        { x: right, y: top },
-        { x: left, y: top },
-    ];
-}
-
-/** Создаёт случайный случай и отдельные учебные edge cases. */
-function createPointCases(): PointCase[] {
-    const polygon = createPolygon();
-    const examplePolygon = createExamplePolygon();
-    const minX = Math.min(...polygon.map(({ x }) => x));
-    const maxX = Math.max(...polygon.map(({ x }) => x));
-    const exampleLeft = examplePolygon[0].x;
-    const topY = Math.max(...examplePolygon.map(({ y }) => y));
-
-    return [
-        {
-            polygon,
-            point: {
-                x: getRandomInteger(-8, 8),
-                y: getRandomInteger(-7, 7),
-            },
-            title: "Случайная точка",
-            rayStartX: -9,
-        },
-        {
-            polygon: examplePolygon,
-            point: {
-                x: getRandomInteger(-8, exampleLeft - 1),
-                y: getRandomInteger(-4, 4),
-            },
-            title: "Луч пересекает многоугольник два раза",
-            rayStartX: -9,
-        },
-        {
-            polygon: examplePolygon,
-            point: {
-                x: getRandomInteger(-8, -6),
-                y: topY,
-            },
-            title: "Луч проходит по верхнему ребру",
-            rayStartX: -9,
-        },
-        {
-            polygon: [
-                { x: minX, y: -3 },
-                { x: maxX, y: 1 },
-                { x: minX, y: 5 },
-            ],
-            point: { x: getRandomInteger(-8, minX - 1), y: 1 },
-            title: "Луч проходит через вершину",
-            rayStartX: -9,
-        },
-        {
-            polygon: examplePolygon,
-            point: {
-                x: getRandomInteger(
-                    examplePolygon[0].x + 1,
-                    examplePolygon[1].x - 1,
-                ),
-                y: getRandomInteger(examplePolygon[0].y + 1, topY - 1),
-            },
-            title: "Случайная точка внутри",
-            rayStartX: -9,
-        },
-        {
-            polygon: examplePolygon,
-            point: {
-                x: getRandomInteger(7, 9),
-                y: getRandomInteger(-4, 4),
-            },
-            title: "Случайная точка справа",
-            rayStartX: -9,
-        },
-    ];
-}
-
-function formatPoint(point: Point): string {
-    return `(${point.x},${point.y})`;
-}
-
 /** Создаёт конечное ребро между двумя соседними вершинами. */
 function formatEdge(first: Point, second: Point): string {
     if (first.x === second.x) {
@@ -225,6 +117,111 @@ const positionText: Record<PolygonPointPosition, string> = {
 };
 
 const Lab2 = () => {
+    /** Создаёт выпуклый многоугольник с вершинами в порядке обхода. */
+    function createPolygon(): Point[] {
+        const radius = 4 + Math.floor(Math.random() * 3);
+        const centerX = Math.floor(Math.random() * 5) - 2;
+        const centerY = Math.floor(Math.random() * 5) - 2;
+
+        return [
+            { x: centerX - radius, y: centerY - 2 },
+            { x: centerX - 2, y: centerY - radius },
+            { x: centerX + radius - 1, y: centerY - radius + 1 },
+            { x: centerX + radius, y: centerY + 2 },
+            { x: centerX + 2, y: centerY + radius },
+            { x: centerX - radius + 1, y: centerY + radius - 1 },
+        ];
+    }
+
+    function getRandomInteger(minimum: number, maximum: number): number {
+        return Math.floor(Math.random() * (maximum - minimum + 1)) + minimum;
+    }
+
+    function createExamplePolygon(): Point[] {
+        const left = getRandomInteger(-5, -2);
+        const right = getRandomInteger(3, 6);
+        const bottom = getRandomInteger(-5, -2);
+        const top = getRandomInteger(3, 6);
+
+        return [
+            { x: left, y: bottom },
+            { x: right, y: bottom },
+            { x: right, y: top },
+            { x: left, y: top },
+        ];
+    }
+
+    /** Создаёт случайный случай и отдельные учебные edge cases. */
+    function createPointCases(): PointCase[] {
+        const polygon = createPolygon();
+        const examplePolygon = createExamplePolygon();
+        const minX = Math.min(...polygon.map(({ x }) => x));
+        const maxX = Math.max(...polygon.map(({ x }) => x));
+        const exampleLeft = examplePolygon[0].x;
+        const topY = Math.max(...examplePolygon.map(({ y }) => y));
+
+        return [
+            {
+                polygon,
+                point: {
+                    x: getRandomInteger(-8, 8),
+                    y: getRandomInteger(-7, 7),
+                },
+                title: "Случайная точка",
+                rayStartX: -9,
+            },
+            {
+                polygon: examplePolygon,
+                point: {
+                    x: getRandomInteger(-8, exampleLeft - 1),
+                    y: getRandomInteger(-4, 4),
+                },
+                title: "Луч пересекает многоугольник два раза",
+                rayStartX: -9,
+            },
+            {
+                polygon: examplePolygon,
+                point: {
+                    x: getRandomInteger(-8, -6),
+                    y: topY,
+                },
+                title: "Луч проходит по верхнему ребру",
+                rayStartX: -9,
+            },
+            {
+                polygon: [
+                    { x: minX, y: -3 },
+                    { x: maxX, y: 1 },
+                    { x: minX, y: 5 },
+                ],
+                point: { x: getRandomInteger(-8, minX - 1), y: 1 },
+                title: "Луч проходит через вершину",
+                rayStartX: -9,
+            },
+            {
+                polygon: examplePolygon,
+                point: {
+                    x: getRandomInteger(
+                        examplePolygon[0].x + 1,
+                        examplePolygon[1].x - 1,
+                    ),
+                    y: getRandomInteger(examplePolygon[0].y + 1, topY - 1),
+                },
+                title: "Случайная точка внутри",
+                rayStartX: -9,
+            },
+            {
+                polygon: examplePolygon,
+                point: {
+                    x: getRandomInteger(7, 9),
+                    y: getRandomInteger(-4, 4),
+                },
+                title: "Случайная точка справа",
+                rayStartX: -9,
+            },
+        ];
+    }
+
     const [caseIndex, setCaseIndex] = useState(0);
     const [pointCases, setPointCases] = useState(createPointCases);
     const pointCase = pointCases[caseIndex];

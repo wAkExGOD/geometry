@@ -2,6 +2,7 @@ import { useState } from "react";
 import Graph from "./Graph";
 import { doSegmentsIntersect } from "./Lab12";
 import type { Point } from "../types/types";
+import { formatPoint } from "../utils/formatPoint";
 
 /** Определяет, является ли замкнутый многоугольник простым. */
 export function isSimplePolygon(points: Point[]): boolean {
@@ -75,33 +76,6 @@ export function isSimplePolygon(points: Point[]): boolean {
     });
 }
 
-function getRandomCoordinate(): number {
-    return Math.floor(Math.random() * 17) - 8;
-}
-
-/** Создаёт новый многоугольник с неповторяющимися вершинами. */
-function createPolygon(): Point[] {
-    const points: Point[] = [];
-
-    while (points.length < 6) {
-        const point = { x: getRandomCoordinate(), y: getRandomCoordinate() };
-        const isDuplicate = points.some(
-            (savedPoint) =>
-                savedPoint.x === point.x && savedPoint.y === point.y,
-        );
-
-        if (!isDuplicate) {
-            points.push(point);
-        }
-    }
-
-    return points;
-}
-
-function formatPoint(point: Point): string {
-    return `(${point.x},${point.y})`;
-}
-
 /** Создаёт конечный отрезок между двумя соседними вершинами. */
 function formatEdge(first: Point, second: Point): string {
     const x = `(1-t)*${first.x}+t*${second.x}`;
@@ -111,6 +85,32 @@ function formatEdge(first: Point, second: Point): string {
 }
 
 const Lab13 = () => {
+    function getRandomCoordinate(): number {
+        return Math.floor(Math.random() * 17) - 8;
+    }
+
+    /** Создаёт новый многоугольник с неповторяющимися вершинами. */
+    function createPolygon(): Point[] {
+        const points: Point[] = [];
+
+        while (points.length < 6) {
+            const point = {
+                x: getRandomCoordinate(),
+                y: getRandomCoordinate(),
+            };
+            const isDuplicate = points.some(
+                (savedPoint) =>
+                    savedPoint.x === point.x && savedPoint.y === point.y,
+            );
+
+            if (!isDuplicate) {
+                points.push(point);
+            }
+        }
+
+        return points;
+    }
+
     const [points, setPoints] = useState(createPolygon);
     const isSimple = isSimplePolygon(points);
     const expressions: Desmos.ExpressionState[] = points.flatMap(

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Graph from "./Graph";
 import type { GeometryCase, Point, PointPosition } from "../types/types";
+import { formatPoint } from "../utils/formatPoint";
 
 /**
  * Возвращает числовой результат ориентации третьей точки относительно прямой.
@@ -38,33 +39,28 @@ export function getPointPosition({ p1, p2, p0 }: GeometryCase): PointPosition {
     return orientation > 0 ? "левее" : "правее";
 }
 
-/** Создаёт целое число в заданном диапазоне. */
-function getRandomCoordinate(): number {
-    return Math.floor(Math.random() * 17) - 8;
-}
-
-/** Создаёт новый случай и гарантирует, что p1 и p2 задают прямую. */
-function createGeometryCase(): GeometryCase {
-    const p1 = { x: getRandomCoordinate(), y: getRandomCoordinate() };
-    let p2 = { x: getRandomCoordinate(), y: getRandomCoordinate() };
-
-    while (p1.x === p2.x && p1.y === p2.y) {
-        p2 = { x: getRandomCoordinate(), y: getRandomCoordinate() };
+const Lab11 = () => {
+    /** Создаёт целое число в заданном диапазоне. */
+    function getRandomCoordinate(): number {
+        return Math.floor(Math.random() * 17) - 8;
     }
 
-    return {
-        p1,
-        p2,
-        p0: { x: getRandomCoordinate(), y: getRandomCoordinate() },
-    };
-}
+    /** Создаёт новый случай и гарантирует, что p1 и p2 задают прямую. */
+    function createGeometryCase(): GeometryCase {
+        const p1 = { x: getRandomCoordinate(), y: getRandomCoordinate() };
+        let p2 = { x: getRandomCoordinate(), y: getRandomCoordinate() };
 
-/** Форматирует координаты для подписей и выражений Desmos. */
-function formatPoint(point: Point): string {
-    return `(${point.x}, ${point.y})`;
-}
+        while (p1.x === p2.x && p1.y === p2.y) {
+            p2 = { x: getRandomCoordinate(), y: getRandomCoordinate() };
+        }
 
-const Lab11 = () => {
+        return {
+            p1,
+            p2,
+            p0: { x: getRandomCoordinate(), y: getRandomCoordinate() },
+        };
+    }
+
     const [geometryCase, setGeometryCase] = useState(createGeometryCase);
     const position = getPointPosition(geometryCase);
     const expressions: Desmos.ExpressionState[] = (() => {

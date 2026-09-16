@@ -2,6 +2,7 @@ import { useState } from "react";
 import Graph from "./Graph";
 import { getOrientation } from "./Lab11";
 import type { Point, SegmentCase } from "../types/types";
+import { formatPoint } from "../utils/formatPoint";
 
 /** Проверяет, лежит ли точка внутри прямоугольника отрезка. */
 export function isPointOnSegment(
@@ -42,35 +43,6 @@ export function doSegmentsIntersect({ p1, p2, p3, p4 }: SegmentCase): boolean {
     return firstPairIsOnDifferentSides && secondPairIsOnDifferentSides;
 }
 
-function getRandomCoordinate(): number {
-    return Math.floor(Math.random() * 17) - 8;
-}
-
-/** Создаёт новый случай с двумя непустыми отрезками. */
-function createSegmentCase(): SegmentCase {
-    const getPoint = (): Point => ({
-        x: getRandomCoordinate(),
-        y: getRandomCoordinate(),
-    });
-    const p1 = getPoint();
-    let p2 = getPoint();
-    const p3 = getPoint();
-    let p4 = getPoint();
-
-    while (p1.x === p2.x && p1.y === p2.y) {
-        p2 = getPoint();
-    }
-    while (p3.x === p4.x && p3.y === p4.y) {
-        p4 = getPoint();
-    }
-
-    return { p1, p2, p3, p4 };
-}
-
-function formatPoint(point: Point): string {
-    return `(${point.x}, ${point.y})`;
-}
-
 function formatSegment(first: Point, second: Point): string {
     const x = `(1-t)*${first.x}+t*${second.x}`;
     const y = `(1-t)*${first.y}+t*${second.y}`;
@@ -79,6 +51,31 @@ function formatSegment(first: Point, second: Point): string {
 }
 
 const Lab12 = () => {
+    function getRandomCoordinate(): number {
+        return Math.floor(Math.random() * 17) - 8;
+    }
+
+    /** Создаёт новый случай с двумя непустыми отрезками. */
+    function createSegmentCase(): SegmentCase {
+        const getPoint = (): Point => ({
+            x: getRandomCoordinate(),
+            y: getRandomCoordinate(),
+        });
+        const p1 = getPoint();
+        let p2 = getPoint();
+        const p3 = getPoint();
+        let p4 = getPoint();
+
+        while (p1.x === p2.x && p1.y === p2.y) {
+            p2 = getPoint();
+        }
+        while (p3.x === p4.x && p3.y === p4.y) {
+            p4 = getPoint();
+        }
+
+        return { p1, p2, p3, p4 };
+    }
+
     const [segmentCase, setSegmentCase] = useState(createSegmentCase);
     const intersects = doSegmentsIntersect(segmentCase);
     const { p1, p2, p3, p4 } = segmentCase;
