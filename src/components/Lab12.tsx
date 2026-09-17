@@ -4,12 +4,18 @@ import { getOrientation } from "./Lab11";
 import type { Point, SegmentCase } from "../types/types";
 import { formatPoint } from "../utils/formatPoint";
 
-/** Проверяет, лежит ли точка внутри прямоугольника отрезка. */
+/** Проверяет, лежит ли точка на отрезке геометрически */
 export function isPointOnSegment(
     first: Point,
     second: Point,
     point: Point,
 ): boolean {
+    const orientation = getOrientation(first, second, point);
+
+    if (orientation !== 0) {
+        return false;
+    }
+
     return (
         Math.min(first.x, second.x) <= point.x &&
         point.x <= Math.max(first.x, second.x) &&
