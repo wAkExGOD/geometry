@@ -23,9 +23,10 @@ function isInsideBoundingBox(polygon: Point[], point: Point): boolean {
 }
 
 /** Возвращает точки пересечения горизонтального луча с рёбрами справа от p0. */
-function getRayIntersections(
+export function getRayIntersections(
     polygon: Point[],
     point: Point,
+    startX = point.x,
 ): RayIntersection[] {
     const intersections: RayIntersection[] = [];
 
@@ -52,7 +53,7 @@ function getRayIntersections(
             first.x +
             ((point.y - first.y) * (second.x - first.x)) / (second.y - first.y);
 
-        if (intersectionX > point.x) {
+        if (intersectionX >= startX) {
             intersections.push({
                 point: { x: intersectionX, y: point.y },
                 edge: index,
@@ -228,6 +229,11 @@ const Lab2 = () => {
     const { polygon, point, rayStartX } = pointCase;
     const position = getPointPosition(polygon, point);
     const rayIntersections = getRayIntersections(polygon, point);
+    const visibleRayIntersections = getRayIntersections(
+        polygon,
+        point,
+        rayStartX,
+    );
     const expressions: Desmos.ExpressionState[] = [
         ...polygon.map((vertex, index) => ({
             id: `edge-${index}`,
@@ -253,7 +259,7 @@ const Lab2 = () => {
             latex: formatRay(point, rayStartX),
             color: Desmos.Colors.RED,
         },
-        ...rayIntersections.map(({ point: intersection, edge }) => ({
+        ...visibleRayIntersections.map(({ point: intersection, edge }) => ({
             id: `intersection-${edge}`,
             latex: formatPoint(intersection),
             label: `пересечение с ребром ${edge + 1}`,
