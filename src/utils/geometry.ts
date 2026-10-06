@@ -1,0 +1,71 @@
+import type { Point } from "../types/types";
+
+/** Проверяет пересечение отрезков. */
+export function segmentsIntersect(
+    p1: Point,
+    p2: Point,
+    p3: Point,
+    p4: Point,
+): boolean {
+    const d1 = direction(p3, p4, p1);
+    const d2 = direction(p3, p4, p2);
+    const d3 = direction(p1, p2, p3);
+    const d4 = direction(p1, p2, p4);
+
+    if (
+        ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+        ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
+    ) {
+        return true;
+    }
+
+    return false;
+}
+
+/** Вычисляет направление поворота от p1->p2 к p1->p3. */
+function direction(p1: Point, p2: Point, p3: Point): number {
+    return (p3.x - p1.x) * (p2.y - p1.y) - (p2.x - p1.x) * (p3.y - p1.y);
+}
+
+/** Находит точку пересечения отрезка с ребром многоугольника и возвращает индекс ребра. */
+export function findCollisionEdge(
+    start: Point,
+    end: Point,
+    polygon: Point[],
+): number | null {
+    for (let i = 0; i < polygon.length; i++) {
+        const v1 = polygon[i];
+        const v2 = polygon[(i + 1) % polygon.length];
+
+        if (segmentsIntersect(start, end, v1, v2)) {
+            return i;
+        }
+    }
+
+    return null;
+}
+
+/** Отражает вектор скорости от ребра многоугольника. */
+export function reflectVelocity(
+    velocity: Point,
+    edgeStart: Point,
+    edgeEnd: Point,
+): Point {
+    // Вектор направляющей ребра Q
+    const qx = edgeEnd.x - edgeStart.x;
+    const qy = edgeEnd.y - edgeStart.y;
+
+    // Скалярное произведение V · Q
+    const dotVQ = velocity.x * qx + velocity.y * qy;
+
+    // Скалярное произведение Q · Q
+    const dotQQ = qx * qx + qy * qy;
+
+    // Формула отражения: V' = 2 * (V·Q / Q·Q) * Q - V
+    const factor = (2 * dotVQ) / dotQQ;
+
+    return {
+        x: factor * qx - velocity.x,
+        y: factor * qy - velocity.y,
+    };
+}
