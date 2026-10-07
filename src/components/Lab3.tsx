@@ -10,9 +10,12 @@ import {
 } from '../utils/lab3';
 
 const Lab3 = () => {
+   // Храним идентификатор текущего кадра, чтобы корректно остановить RAF.
    const animationFrameRef = useRef<number | undefined>(undefined);
+   // Ограничиваем частоту обновления физики до одного шага примерно каждые 50 мс.
    const lastFrameTimeRef = useRef(0);
 
+   // При первом рендере создаём пару полигонов для всей текущей сцены.
    const { outer: initialOuter, inner: initialInner } = generateLab3Polygons();
 
    // Выпуклый многоугольник Q (внешняя граница)
@@ -27,21 +30,21 @@ const Lab3 = () => {
    const [speed, setSpeed] = useState(0.1);
    const [pointCount, setPointCount] = useState(10);
 
-   /** Инициализирует движущиеся точки. */
+   /** Создаёт точки между внешней границей Q и внутренним препятствием P. */
    const initializePoints = () => {
       setMovingPoints(
          createMovingPoints(convexPolygon, simplePolygon, pointCount, speed)
       );
    };
 
-   /** Обновляет позиции точек. */
+   /** Применяет один физический шаг к каждой ещё не остановившейся точке. */
    const updatePoints = () => {
       setMovingPoints(prevPoints =>
          prevPoints.map(point => updateMovingPoint(point, convexPolygon, simplePolygon))
       );
    };
 
-   /** Цикл анимации. */
+   /** Планирует следующий кадр и обновляет физику только с заданным интервалом. */
    const animate = (timestamp: number) => {
       if (timestamp - lastFrameTimeRef.current >= 50) {
          lastFrameTimeRef.current = timestamp;
@@ -50,14 +53,14 @@ const Lab3 = () => {
       animationFrameRef.current = requestAnimationFrame(animate);
    };
 
-   /** Запускает анимацию. */
+   /** Переводит сцену в состояние, в котором RAF начинает обновлять точки. */
    const startAnimation = () => {
       if (!isAnimating) {
          setIsAnimating(true);
       }
    };
 
-   /** Останавливает анимацию. */
+   /** Отменяет запланированный кадр и оставляет точки в текущих позициях. */
    const stopAnimation = () => {
       if (animationFrameRef.current) {
          cancelAnimationFrame(animationFrameRef.current);
@@ -65,23 +68,22 @@ const Lab3 = () => {
       setIsAnimating(false);
    };
 
-   /** Сбрасывает анимацию. */
+   /** Останавливает движение и создаёт новый набор точек в той же сцене. */
    const resetAnimation = () => {
       stopAnimation();
       initializePoints();
    };
 
-   /** Генерирует новые многоугольники. */
+   /** Создаёт новую сцену и сразу инициализирует точки именно для её полигонов. */
    const regeneratePolygons = () => {
       stopAnimation();
       const { outer, inner } = generateLab3Polygons();
       setConvexPolygon(outer);
       setSimplePolygon(inner);
-      // Инициализируем точки после установки новых многоугольников
-      setTimeout(() => initializePoints(), 0);
+      setMovingPoints(createMovingPoints(outer, inner, pointCount, speed));
    };
 
-   // Эффект для управления анимацией
+   // Запускаем и очищаем requestAnimationFrame вместе с состоянием анимации.
    useEffect(() => {
       if (isAnimating) {
          animationFrameRef.current = requestAnimationFrame(animate);
@@ -98,7 +100,7 @@ const Lab3 = () => {
       };
    }, [isAnimating, movingPoints]);
 
-   // Инициализация при монтировании
+   // После монтирования полигон уже известен, поэтому можно создать точки.
    useEffect(() => {
       initializePoints();
    }, []);
@@ -112,6 +114,7 @@ const Lab3 = () => {
       idPrefix: string,
       color: string
    ): Desmos.ExpressionState[] =>
+      // Каждое ребро замыкается на следующую вершину, а последнее — на первую.
       polygon.map((point, index) => ({
          id: `${idPrefix}-edge-${index}`,
          latex: formatEdge(point, polygon[(index + 1) % polygon.length]),
@@ -120,6 +123,7 @@ const Lab3 = () => {
          lineWidth: 3
       }));
 
+   // Синий Q, красный P и точки: цвет точки показывает, остановилась ли она.
    const expressions: Desmos.ExpressionState[] = [
       ...polygonEdges(convexPolygon, 'outer', Desmos.Colors.BLUE),
       ...polygonEdges(simplePolygon, 'inner', Desmos.Colors.RED),

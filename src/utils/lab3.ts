@@ -7,19 +7,25 @@ import { findCollisionEdge, findSegmentIntersection, reflectVelocity } from './g
 import { generateRandomConvexPolygon, isPolygonInsidePolygon } from './polygonGenerator';
 
 export interface MovingPoint {
+   /** Текущее положение точки в координатах графика. */
    position: Point;
+   /** Вектор перемещения за один физический шаг. */
    velocity: Point;
+   /** После столкновения точка больше не участвует в движении. */
    stopped: boolean;
 }
 
+/** Меняет длину скорости, сохраняя направление незавершённого движения. */
 export function updateMovingPointsSpeed(
    points: MovingPoint[],
    speed: number
 ): MovingPoint[] {
    return points.map(point => {
+      // Остановившиеся точки не должны снова начать двигаться при смене скорости.
       if (point.stopped) return point;
 
       const velocityLength = Math.hypot(point.velocity.x, point.velocity.y);
+      // Защита от деления на ноль для точки с нулевой скоростью.
       if (velocityLength === 0) return point;
 
       return {
@@ -37,6 +43,7 @@ export function generateLab3Polygons(): { outer: Point[]; inner: Point[] } {
    let inner: Point[];
    let attempts = 0;
 
+   // Повторяем генерацию, пока все вершины P не окажутся внутри Q.
    do {
       outer = generateRandomConvexPolygon(0, 0, 6, 9, 6 + Math.floor(Math.random() * 3));
       inner = generateRandomConvexPolygon(
@@ -59,6 +66,7 @@ export function createMovingPoints(
    speed: number
 ): MovingPoint[] {
    const points: MovingPoint[] = [];
+   // Bounding box Q задаёт область, в которой выгодно искать стартовые точки.
    const xCoords = convexPolygon.map(point => point.x);
    const yCoords = convexPolygon.map(point => point.y);
    const minX = Math.min(...xCoords);
@@ -70,6 +78,7 @@ export function createMovingPoints(
       let position: Point;
       let attempts = 0;
 
+      // Случайная точка принимается только между Q и P.
       do {
          position = {
             x: minX + Math.random() * (maxX - minX),
@@ -77,6 +86,7 @@ export function createMovingPoints(
          };
          attempts++;
 
+         // Для выпуклой Q используется бинарный тест, для простого P — октантный.
          const insideOuter = isPointInsideConvexPolygonBinary(convexPolygon, position);
          const insideInner = isPointInsidePolygonOctant(simplePolygon, position);
 
@@ -85,6 +95,7 @@ export function createMovingPoints(
          }
       } while (attempts < 500);
 
+      // После лимита попыток и перед добавлением повторно подтверждаем оба условия.
       if (
          attempts >= 500 ||
          !isPointInsideConvexPolygonBinary(convexPolygon, position) ||
@@ -93,6 +104,7 @@ export function createMovingPoints(
          continue;
       }
 
+      // Направление выбирается случайно, а длина вектора равна заданной скорости.
       const angle = Math.random() * 2 * Math.PI;
       points.push({
          position,
@@ -112,28 +124,33 @@ export function updateMovingPoint(
    convexPolygon: Point[],
    simplePolygon: Point[]
 ): MovingPoint {
+   // Остановившаяся точка не должна изменяться последующими кадрами.
    if (point.stopped) return point;
 
+   // Проверяем положение, в которое точка попадёт за один шаг.
    const newPosition = {
       x: point.position.x + point.velocity.x,
       y: point.position.y + point.velocity.y
    };
 
-   const obstacleCollision = findCollisionEdge(
-      point.position,
-      newPosition,
-      simplePolygon
-   );
-
-   if (obstacleCollision !== null) {
-      const edgeStart = simplePolygon[obstacleCollision];
-      const edgeEnd = simplePolygon[(obstacleCollision + 1) % simplePolygon.length];
-      const collisionPosition = findSegmentIntersection(
+   // Октантный тест определяет попадание внутрь препятствия P.
+   if (isPointInsidePolygonOctant(simplePolygon, newPosition)) {
+      const obstacleCollision = findCollisionEdge(
          point.position,
          newPosition,
-         edgeStart,
-         edgeEnd
+         simplePolygon
       );
+
+      // Если траектория пересекла ребро, фиксируем точку на границе, а не внутри.
+      const collisionPosition =
+         obstacleCollision === null
+            ? null
+            : findSegmentIntersection(
+                 point.position,
+                 newPosition,
+                 simplePolygon[obstacleCollision],
+                 simplePolygon[(obstacleCollision + 1) % simplePolygon.length]
+              );
 
       return {
          ...point,
@@ -143,14 +160,7 @@ export function updateMovingPoint(
       };
    }
 
-   if (isPointInsidePolygonOctant(simplePolygon, newPosition)) {
-      return {
-         ...point,
-         stopped: true,
-         velocity: { x: 0, y: 0 }
-      };
-   }
-
+   // Сначала ищем точное пересечение с границей Q и отражаем скорость от её ребра.
    const boundaryCollision = findCollisionEdge(
       point.position,
       newPosition,
@@ -167,6 +177,7 @@ export function updateMovingPoint(
       };
    }
 
+   // Запасная защита: точка не должна оказаться за пределами выпуклого Q.
    if (!isPointInsideConvexPolygonBinary(convexPolygon, newPosition)) {
       return {
          ...point,
