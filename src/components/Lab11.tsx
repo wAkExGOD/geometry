@@ -2,27 +2,9 @@ import { useState } from "react";
 import Graph from "./Graph";
 import type { GeometryCase, Point, PointPosition } from "../types/types";
 import { formatPoint } from "../utils/formatPoint";
+import { getOrientation } from "../utils/geometry";
 
-/**
- * Возвращает числовой результат ориентации третьей точки относительно прямой.
- * Это общий расчёт, который используется в Lab11 и Lab12.
- */
-export function getOrientation(
-    first: Point,
-    second: Point,
-    third: Point,
-): number {
-    // Считаем вектор направления прямой: от первой точки ко второй.
-    const lineVectorX = second.x - first.x;
-    const lineVectorY = second.y - first.y;
-
-    // Считаем вектор от первой точки к проверяемой третьей точке.
-    const pointVectorX = third.x - first.x;
-    const pointVectorY = third.y - first.y;
-
-    // Возвращаем определитель двух векторов.
-    return lineVectorX * pointVectorY - lineVectorY * pointVectorX;
-}
+export { getOrientation } from "../utils/geometry";
 
 /**
  * Определяет положение p0 относительно направленной прямой p1 -> p2.

@@ -1,5 +1,37 @@
 import type { Point } from "../types/types";
 
+/** Возвращает числовой результат ориентации третьей точки относительно прямой. */
+export function getOrientation(
+    first: Point,
+    second: Point,
+    third: Point,
+): number {
+    const lineVectorX = second.x - first.x;
+    const lineVectorY = second.y - first.y;
+    const pointVectorX = third.x - first.x;
+    const pointVectorY = third.y - first.y;
+
+    return lineVectorX * pointVectorY - lineVectorY * pointVectorX;
+}
+
+/** Проверяет, лежит ли точка на отрезке геометрически. */
+export function isPointOnSegment(
+    first: Point,
+    second: Point,
+    point: Point,
+): boolean {
+    if (getOrientation(first, second, point) !== 0) {
+        return false;
+    }
+
+    return (
+        Math.min(first.x, second.x) <= point.x &&
+        point.x <= Math.max(first.x, second.x) &&
+        Math.min(first.y, second.y) <= point.y &&
+        point.y <= Math.max(first.y, second.y)
+    );
+}
+
 /** Проверяет пересечение отрезков. */
 export function segmentsIntersect(
     p1: Point,
