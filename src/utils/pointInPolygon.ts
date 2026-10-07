@@ -1,49 +1,41 @@
 import type { Point } from '../types/types';
 
-/** Угловой тест через октаны для простого многоугольника. */
+/** Проверяет принадлежность точки простому многоугольнику. */
 export function isPointInsidePolygonOctant(polygon: Point[], point: Point): boolean {
-   let windingNumber = 0;
+   if (polygon.length < 3) return false;
 
-   for (let i = 0; i < polygon.length; i++) {
-      const v1 = polygon[i];
-      const v2 = polygon[(i + 1) % polygon.length];
+   let inside = false;
 
-      // Вычисляем октанты для вершин относительно точки
-      const octant1 = getOctant(v1.x - point.x, v1.y - point.y);
-      const octant2 = getOctant(v2.x - point.x, v2.y - point.y);
+   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const current = polygon[i];
+      const previous = polygon[j];
+      const cross =
+         (current.x - previous.x) * (point.y - previous.y) -
+         (current.y - previous.y) * (point.x - previous.x);
+      const withinX =
+         point.x >= Math.min(previous.x, current.x) &&
+         point.x <= Math.max(previous.x, current.x);
+      const withinY =
+         point.y >= Math.min(previous.y, current.y) &&
+         point.y <= Math.max(previous.y, current.y);
 
-      let delta = octant2 - octant1;
+      // Точка на границе считается частью препятствия.
+      if (Math.abs(cross) < 1e-10 && withinX && withinY) return true;
 
-      // Нормализуем дельту в диапазон [-4, 4]
-      if (delta > 4) delta -= 8;
-      if (delta < -4) delta += 8;
-
-      // Корректируем для граничных случаев
-      if (delta === 4 || delta === -4) {
-         const cross =
-            (v2.x - point.x) * (v1.y - point.y) - (v1.x - point.x) * (v2.y - point.y);
-         if (cross > 0) {
-            delta = 4;
-         } else {
-            delta = -4;
-         }
+      const crossesRay =
+         (previous.y > point.y) !== (current.y > point.y);
+      if (
+         crossesRay &&
+         point.x <
+            ((current.x - previous.x) * (point.y - previous.y)) /
+               (current.y - previous.y) +
+               previous.x
+      ) {
+         inside = !inside;
       }
-
-      windingNumber += delta;
    }
 
-   // Если winding number не равен 0, точка внутри
-   return windingNumber !== 0;
-}
-
-/** Определяет октант для вектора (dx, dy). */
-function getOctant(dx: number, dy: number): number {
-   if (dx === 0 && dy === 0) return 0;
-
-   const angle = Math.atan2(dy, dx);
-   const octant = Math.floor((angle + Math.PI) / (Math.PI / 4));
-
-   return octant % 8;
+   return inside;
 }
 
 /** Бинарный тест для выпуклого многоугольника. */

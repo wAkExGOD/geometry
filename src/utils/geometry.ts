@@ -45,6 +45,40 @@ export function findCollisionEdge(
     return null;
 }
 
+/** Находит точку пересечения двух пересекающихся отрезков. */
+export function findSegmentIntersection(
+     start: Point,
+     end: Point,
+     edgeStart: Point,
+     edgeEnd: Point,
+): Point | null {
+     const startToEnd = {
+         x: end.x - start.x,
+         y: end.y - start.y,
+     };
+     const edgeVector = {
+         x: edgeEnd.x - edgeStart.x,
+         y: edgeEnd.y - edgeStart.y,
+     };
+     const denominator =
+         startToEnd.x * edgeVector.y - startToEnd.y * edgeVector.x;
+
+     if (denominator === 0) return null;
+
+     const edgeToStart = {
+         x: edgeStart.x - start.x,
+         y: edgeStart.y - start.y,
+     };
+     const segmentFactor =
+         (edgeToStart.x * edgeVector.y - edgeToStart.y * edgeVector.x) /
+         denominator;
+
+     return {
+         x: start.x + segmentFactor * startToEnd.x,
+         y: start.y + segmentFactor * startToEnd.y,
+     };
+}
+
 /** Отражает вектор скорости от ребра многоугольника. */
 export function reflectVelocity(
     velocity: Point,

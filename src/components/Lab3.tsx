@@ -4,7 +4,11 @@ import {
    isPointInsidePolygonOctant,
    isPointInsideConvexPolygonBinary
 } from '../utils/pointInPolygon';
-import { findCollisionEdge, reflectVelocity } from '../utils/geometry';
+import {
+   findCollisionEdge,
+   findSegmentIntersection,
+   reflectVelocity
+} from '../utils/geometry';
 import {
    generateRandomConvexPolygon,
    isPolygonInsidePolygon
@@ -147,8 +151,19 @@ const Lab3 = () => {
 
             // Если траектория пересекает препятствие - останавливаем
             if (obstacleCollision !== null) {
+               const edgeStart = simplePolygon[obstacleCollision];
+               const edgeEnd =
+                  simplePolygon[(obstacleCollision + 1) % simplePolygon.length];
+               const collisionPosition = findSegmentIntersection(
+                  point.position,
+                  newPosition,
+                  edgeStart,
+                  edgeEnd
+               );
+
                return {
                   ...point,
+                  position: collisionPosition ?? newPosition,
                   stopped: true,
                   velocity: { x: 0, y: 0 }
                };
