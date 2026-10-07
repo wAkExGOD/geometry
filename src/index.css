@@ -16,6 +16,10 @@ body {
     min-width: 320px;
 }
 
+#root {
+    height: 100dvh;
+}
+
 button {
     font: inherit;
 }
@@ -27,6 +31,7 @@ button {
     padding: 24px;
     gap: 24px;
     background: linear-gradient(135deg, #dcecf1 0%, #f4eee4 100%);
+    max-height: 100%;
 }
 
 .control-panel {
