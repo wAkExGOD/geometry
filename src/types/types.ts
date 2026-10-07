@@ -42,4 +42,5 @@ export type MathBounds = {
 export type GraphProps = {
     expressions: Desmos.ExpressionState[];
     mathBounds?: MathBounds;
+    scale?: number;
 };
