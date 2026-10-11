@@ -132,7 +132,11 @@ h1 {
 }
 
 .graph-panel {
-    min-height: calc(100vh - 48px);
+    align-self: start;
+    width: 100%;
+    height: calc(100vh - 48px);
+    min-height: 0;
+    max-height: calc(100vh - 48px);
     overflow: hidden;
     border: 1px solid rgb(255 255 255 / 70%);
     border-radius: 8px;
@@ -156,6 +160,7 @@ h1 {
     }
 
     .graph-panel {
-        min-height: 62vh;
+        height: calc(100vh - 24px);
+        max-height: calc(100vh - 24px);
     }
 }
