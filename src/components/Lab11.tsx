@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Graph from "./Graph";
-import type { GeometryCase, Point, PointPosition } from "../types/types";
+import type { GeometryCase, PointPosition } from "../types/types";
 import { formatPoint } from "../utils/formatPoint";
 import { getOrientation } from "../utils/geometry";
 

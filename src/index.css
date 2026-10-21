@@ -149,6 +149,29 @@ h1 {
     height: 100%;
 }
 
+.lab6-page .control-group {
+    display: grid;
+    gap: 8px;
+}
+
+.lab6-page input[type="range"] {
+    width: 100%;
+    accent-color: #17324d;
+}
+
+.lab6-page .button-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.lab6-page button:disabled {
+    opacity: 0.45;
+    cursor: default;
+    transform: none;
+    background: #17324d;
+}
+
 @media (max-width: 760px) {
     .lab-page {
         grid-template-columns: 1fr;

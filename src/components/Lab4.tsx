@@ -220,7 +220,7 @@ const Lab4 = () => {
 
     // Эффект "Таймер": если isPlaying === true, автоматически переключаем кадры каждые 800 мс
     useEffect(() => {
-        let intervalId: NodeJS.Timeout | null = null;
+        let intervalId: ReturnType<typeof setInterval> | null = null;
         if (isPlaying) {
             intervalId = setInterval(() => {
                 setCurrentStepIndex((prev) => {
