@@ -1,198 +1,246 @@
-import type { Point } from '../types/types';
+import type { Point } from "../types/types";
 
 /**
- * Вычисляет ориентацию тройки точек (косое произведение).
- * > 0: поворот влево (против часовой)
- * < 0: поворот вправо (по часовой)
- * = 0: коллинеарны
+ * Погрешность для сравнения с нулём при работе с координатами типа number.
+ * Значения ориентации, по модулю меньшие EPS, считаются коллинеарностью
+ * (для float-координат точное сравнение с нулём почти никогда не срабатывает).
+ */
+const EPS = 1e-10;
+
+/**
+ * Вычисляет ориентацию тройки точек — косое произведение векторов p1p2 и p1p3.
+ *
+ *   > 0 : p3 лежит СЛЕВА от направленного ребра p1 -> p2 (поворот против часовой)
+ *   < 0 : p3 лежит СПРАВА от ребра p1 -> p2 (поворот по часовой)
+ *   = 0 : точки коллинеарны
+ *
+ * Это ключевая проверка всего алгоритма: оболочка хранится в порядке обхода
+ * ПРОТИВ часовой стрелки, поэтому её внутренность всегда находится слева
+ * от каждого ребра. Любое ребро, для которого новая точка оказалась справа,
+ * — «видимое» из этой точки и подлежит удалению.
  */
 function orientation(p1: Point, p2: Point, p3: Point): number {
-   return (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
+    return (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
 }
 
 /**
- * Динамическая выпуклая оболочка.
- * Последовательное добавление точек с перестроением оболочки.
+ * Динамическая (инкрементная) выпуклая оболочка.
+ *
+ * Идея алгоритма (см. доску):
+ *   Шаги 1–3 — вырожденные случаи: оболочка из 1 точки, отрезка, треугольника.
+ *   Шаги 4..n — каждая новая точка p_k:
+ *     4. Проверить, внутри ли p_k текущей оболочки (обойти все рёбра:
+ *        если p_k справа хотя бы от одного ребра — точка внешняя);
+ *     5. Если внутри — ничего не делать;
+ *     6. Если внешняя — найти все видимые рёбра (p_k справа от них),
+ *        удалить их непрерывную цепочку и соединить точки касания
+ *        (крайние вершины цепочки) с p_k двумя новыми рёбрами.
+ *
+ * Сложность: O(h) на добавление точки, где h — текущее число вершин
+ * оболочки; итого O(n * h) для n точек. Это ровно тот вариант алгоритма,
+ * что разбирался на лекции.
  */
 export class DynamicConvexHull<T extends Point> {
-   private hull: T[] = [];
+    /** Вершины оболочки в порядке обхода против часовой стрелки. */
+    private hull: T[] = [];
 
-   /**
-    * Добавляет точку в динамическую выпуклую оболочку.
-    * Возвращает массив удалённых точек (ставших внутренними).
-    */
-   addPoint(point: T): T[] {
-      const removed: T[] = [];
+    /** Все когда-либо добавленные точки (включая ставшие внутренними). */
+    private allPoints: T[] = [];
 
-      // Шаг 1: Первая точка
-      if (this.hull.length === 0) {
-         this.hull.push(point);
-         return removed;
-      }
+    /**
+     * Добавляет точку в динамическую выпуклую оболочку.
+     * Возвращает массив точек, переставших быть вершинами оболочки
+     * (попавших внутрь после перестроения).
+     */
+    addPoint(point: T): T[] {
+        const removed: T[] = [];
+        this.allPoints.push(point);
 
-      // Шаг 2: Вторая точка
-      if (this.hull.length === 1) {
-         this.hull.push(point);
-         return removed;
-      }
-
-      // Шаг 3: Третья точка - проверяем коллинеарность
-      if (this.hull.length === 2) {
-         const orient = orientation(this.hull[0], this.hull[1], point);
-         if (orient === 0) {
-            // Коллинеарны - оставляем отрезок как есть
+        // Защита от дубликатов. Без неё при hull.length === 1 повторное
+        // добавление той же точки дало бы оболочку [p, p], и все последующие
+        // точки ошибочно считались бы коллинеарными (и отбрасывались).
+        if (this.hull.some((p) => p.x === point.x && p.y === point.y)) {
             return removed;
-         }
-         // Строим треугольник (против часовой стрелки)
-         if (orient > 0) {
+        }
+
+        /* ------------------------------------------------------------------
+         * Шаги 1–3: вырожденные случаи
+         * ------------------------------------------------------------------ */
+
+        // Шаг 1: первая точка — оболочка состоит из неё самой.
+        if (this.hull.length === 0) {
             this.hull.push(point);
-         } else {
-            this.hull = [this.hull[0], point, this.hull[1]];
-         }
-         return removed;
-      }
+            return removed;
+        }
 
-      // Шаги 4-n: Проверяем положение точки относительно оболочки
-      // Обходим все рёбра против часовой стрелки
-      let isInside = true;
-      for (let i = 0; i < this.hull.length; i++) {
-         const v1 = this.hull[i];
-         const v2 = this.hull[(i + 1) % this.hull.length];
-         const orient = orientation(v1, v2, point);
+        // Шаг 2: вторая точка — оболочка это отрезок между двумя точками.
+        if (this.hull.length === 1) {
+            this.hull.push(point);
+            return removed;
+        }
 
-         // Если точка справа хотя бы от одного ребра - она внешняя
-         if (orient < 0) {
-            isInside = false;
-            break;
-         }
-      }
+        // Шаг 3: третья точка. Текущая оболочка — отрезок [a, b],
+        // результат зависит от ориентации (a, b, point).
+        if (this.hull.length === 2) {
+            const [a, b] = this.hull;
+            const orient = orientation(a, b, point);
 
-      // Если точка внутри - ничего не делаем
-      if (isInside) {
-         return removed;
-      }
+            if (Math.abs(orient) <= EPS) {
+                // Коллинеарны: новая точка лежит на той же прямой.
+                // Скалярная проекция на направление отрезка показывает,
+                // где именно: dot < 0 — левее a, dot > |ab|^2 — правее b,
+                // иначе — внутри отрезка, оболочка не меняется.
+                const abx = b.x - a.x;
+                const aby = b.y - a.y;
+                const dot = (point.x - a.x) * abx + (point.y - a.y) * aby;
+                const lenSq = abx * abx + aby * aby;
 
-      // Точка внешняя - перестраиваем оболочку
-      // Находим все видимые рёбра (для которых точка справа)
-      const visible: number[] = [];
-      for (let i = 0; i < this.hull.length; i++) {
-         const v1 = this.hull[i];
-         const v2 = this.hull[(i + 1) % this.hull.length];
-         const orient = orientation(v1, v2, point);
+                if (dot < 0) {
+                    this.hull = [point, b]; // расширяем отрезок влево
+                } else if (dot > lenSq) {
+                    this.hull = [a, point]; // расширяем отрезок вправо
+                }
+                return removed;
+            }
 
-         if (orient < 0) {
-            visible.push(i);
-         }
-      }
+            // Не коллинеарны: строим треугольник, упорядоченный против часовой.
+            // Если point левее a->b, добавляем её в конец, иначе — между a и b,
+            // чтобы обход всегда оставался против часовой стрелки.
+            if (orient > 0) {
+                this.hull.push(point);
+            } else {
+                this.hull = [a, point, b];
+            }
+            return removed;
+        }
 
-      if (visible.length === 0) {
-         // Не должно случиться, но на всякий случай
-         return removed;
-      }
+        /* ------------------------------------------------------------------
+         * Шаги 4..n: добавление k-й точки (k > 3), оболочка — многоугольник
+         * ------------------------------------------------------------------ */
 
-      // Находим точки касания - крайние вершины удалённой цепочки
-      // visible содержит индексы рёбер, видимых из point
-      const firstVisibleEdge = visible[0];
-      const lastVisibleEdge = visible[visible.length - 1];
+        // Шаг 4. Проверка положения: внутренняя точка или внешняя.
+        // Обходим все рёбра против часовой стрелки. Внутренность оболочки —
+        // всегда СЛЕВА от каждого ребра, поэтому если точка оказалась СПРАВА
+        // хотя бы от одного ребра — она внешняя.
+        let isInside = true;
+        for (let i = 0; i < this.hull.length; i++) {
+            const v1 = this.hull[i];
+            const v2 = this.hull[(i + 1) % this.hull.length];
 
-      // Точки касания:
-      // leftTangent - начало первого видимого ребра
-      // rightTangent - конец последнего видимого ребра
-      const leftTangentIndex = firstVisibleEdge;
-      const rightTangentIndex = (lastVisibleEdge + 1) % this.hull.length;
+            if (orientation(v1, v2, point) < -EPS) {
+                isInside = false;
+                break; // одного «правого» ребра достаточно
+            }
+        }
 
-      // Сохраняем удалённые точки
-      // Удаляем все вершины между точками касания (кроме самих точек касания)
-      if (visible.length === this.hull.length) {
-         // Все рёбра видимы - это не должно случиться для выпуклой оболочки
-         // Но на всякий случай обрабатываем
-         removed.push(...this.hull);
-         this.hull = [point];
-         return removed;
-      }
+        // Шаг 5. Точка внутри (или на границе) — оболочка не меняется.
+        if (isInside) {
+            return removed;
+        }
 
-      // Строим новую оболочку
-      const newHull: T[] = [];
+        // Точка внешняя — перестраиваем оболочку.
 
-      // Если видимые рёбра образуют непрерывную цепочку без перехода через 0
-      if (lastVisibleEdge >= firstVisibleEdge) {
-         // Добавляем точки от rightTangent до leftTangent (в порядке обхода)
-         for (
-            let i = rightTangentIndex;
-            i !== leftTangentIndex;
-            i = (i + 1) % this.hull.length
-         ) {
+        // Шаг 6. Помечаем ВИДИМЫЕ рёбра — те, для которых точка справа.
+        // Важное свойство выпуклой оболочки: видимые из внешней точки рёбра
+        // всегда образуют ОДНУ непрерывную цепочку при циклическом обходе.
+        const n = this.hull.length;
+        const visible: boolean[] = [];
+        for (let i = 0; i < n; i++) {
+            visible.push(
+                orientation(this.hull[i], this.hull[(i + 1) % n], point) < -EPS,
+            );
+        }
+
+        if (visible.every((v) => v)) {
+            // «Видимы» все рёбра — для выпуклого многоугольника невозможно,
+            // оставлено как защита от численных вырождений.
+            removed.push(...this.hull);
+            this.hull = [point];
+            return removed;
+        }
+
+        // Шаг 7. Точки касания — крайние вершины удаляемой цепочки.
+        // Ищем их не по индексам visible[0]/visible[last] (это ошибочно при
+        // цепочке, переходящей через индекс 0), а по ПЕРЕХОДАМ видимости:
+        //   переход «невидимое -> видимое»  — начало цепочки (левая точка касания);
+        //   переход «видимое -> невидимое»  — конец цепочки (правая точка касания).
+        // Для выпуклой оболочки каждый из переходов ровно один.
+        let leftTangentIndex = -1;
+        let rightTangentIndex = -1;
+        for (let i = 0; i < n; i++) {
+            const next = (i + 1) % n;
+            if (!visible[i] && visible[next]) {
+                leftTangentIndex = next; // старт первого видимого ребра
+            } else if (visible[i] && !visible[next]) {
+                rightTangentIndex = next; // вершина сразу после последнего видимого
+            }
+        }
+
+        // Шаг 8. Пересборка оболочки.
+        // Сохраняем цепочку от rightTangent до leftTangent (включительно)
+        // в порядке обхода против часовой — это рёбра, которые остаются.
+        // Затем добавляем point в конец: он встаёт между точками касания,
+        // а видимая цепочка оказывается вырезанной.
+        const newHull: T[] = [];
+        let i = rightTangentIndex;
+        while (true) {
             newHull.push(this.hull[i]);
-            if ((i + 1) % this.hull.length === leftTangentIndex) break;
-         }
-         newHull.push(this.hull[leftTangentIndex]);
-         newHull.push(point);
+            if (i === leftTangentIndex) break;
+            i = (i + 1) % n;
+        }
+        newHull.push(point);
 
-         // Удалённые вершины
-         for (
-            let i = (leftTangentIndex + 1) % this.hull.length;
-            i !== rightTangentIndex;
-            i = (i + 1) % this.hull.length
-         ) {
+        // Удалённые вершины — все, что лежали строго между точками касания
+        // вдоль удалённой цепочки (они становятся внутренними точками).
+        i = (leftTangentIndex + 1) % n;
+        while (i !== rightTangentIndex) {
             removed.push(this.hull[i]);
-            if ((i + 1) % this.hull.length === rightTangentIndex) break;
-         }
-      } else {
-         // Видимые рёбра переходят через индекс 0
-         // Сохраняем точки от rightTangent до leftTangent
-         for (let i = rightTangentIndex; i <= leftTangentIndex; i++) {
-            newHull.push(this.hull[i]);
-         }
-         newHull.push(point);
+            i = (i + 1) % n;
+        }
 
-         // Удалённые вершины
-         for (let i = leftTangentIndex + 1; i < this.hull.length; i++) {
-            removed.push(this.hull[i]);
-         }
-         for (let i = 0; i < rightTangentIndex; i++) {
-            removed.push(this.hull[i]);
-         }
-      }
+        this.hull = newHull;
+        return removed;
+    }
 
-      this.hull = newHull;
-      return removed;
-   }
+    /**
+     * Возвращает вершины текущей выпуклой оболочки
+     * в порядке обхода против часовой стрелки (копия массива).
+     */
+    getHull(): T[] {
+        return [...this.hull];
+    }
 
-   /**
-    * Возвращает текущую выпуклую оболочку как массив точек в порядке обхода.
-    */
-   getHull(): T[] {
-      return [...this.hull];
-   }
-
-   /**
-    * Возвращает все добавленные точки.
-    */
-   getAllPoints(): T[] {
-      return [...this.hull];
-   }
+    /**
+     * Возвращает ВСЕ добавленные точки, включая те, что стали внутренними
+     * и были исключены из оболочки (копия массива).
+     */
+    getAllPoints(): T[] {
+        return [...this.allPoints];
+    }
 }
 
 /**
- * Генерирует случайную точку внутри круга радиуса 8 с центром (0, 0).
+ * Генерирует случайную точку внутри круга радиуса 8 с центром (0, 0)
+ * (равномерное распределение по площади: корень из случайного радиуса).
  */
 export function generateRandomPoint(): Point {
-   const angle = Math.random() * 2 * Math.PI;
-   const radius = Math.sqrt(Math.random()) * 8;
-   return {
-      x: Math.cos(angle) * radius,
-      y: Math.sin(angle) * radius
-   };
+    const angle = Math.random() * 2 * Math.PI;
+    const radius = Math.sqrt(Math.random()) * 8;
+    return {
+        x: Math.cos(angle) * radius,
+        y: Math.sin(angle) * radius,
+    };
 }
 
 /**
- * Вычисляет периметр выпуклой оболочки.
+ * Вычисляет периметр выпуклой оболочки как замкнутого контура.
+ * Для оболочки из 2 точек периметр вырождается в удвоенную длину отрезка.
  */
 export function calculatePerimeter(hull: readonly Point[]): number {
-   if (hull.length < 2) return 0;
+    if (hull.length < 2) return 0;
 
-   return hull.reduce((sum, point, index) => {
-      const next = hull[(index + 1) % hull.length];
-      return sum + Math.hypot(next.x - point.x, next.y - point.y);
-   }, 0);
+    return hull.reduce((sum, point, index) => {
+        const next = hull[(index + 1) % hull.length];
+        return sum + Math.hypot(next.x - point.x, next.y - point.y);
+    }, 0);
 }

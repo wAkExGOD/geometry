@@ -6,15 +6,15 @@
 // import Lab3 from "./components/Lab3";
 // import Lab4 from "./components/Lab4";
 // import Lab5 from "./components/Lab5";
-import Lab6 from "./components/Lab6"
-// import Lab7 from './components/Lab7';
+import Lab6 from "./components/Lab6";
+import Lab7 from "./components/Lab7";
 
 function App() {
-  return (
-    <>
-      <Lab6 />
-    </>
-  )
+    return (
+        <>
+            <Lab7 />
+        </>
+    );
 }
 
-export default App
+export default App;
